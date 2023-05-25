@@ -8,7 +8,8 @@ use ethers::{
     signers::LocalWallet,
 };
 use op_challenger_driver::{
-    DisputeFactoryDriver, Driver, DriverConfig, OutputAttestationDriver, TxDispatchDriver,
+    ChallengerMode, DisputeFactoryDriver, Driver, DriverConfig, OutputAttestationDriver,
+    TxDispatchDriver,
 };
 use std::sync::Arc;
 use tokio::task::JoinSet;
@@ -63,6 +64,15 @@ struct Args {
         env = "OP_CHALLENGER_L2OO"
     )]
     l2_output_oracle: Address,
+
+    /// The mode to run the challenger in.
+    #[arg(
+        long,
+        default_value = "listen-and-respond",
+        help = "The mode to run the challenger in.",
+        env = "OP_CHALLENGER_MODE"
+    )]
+    mode: ChallengerMode,
 }
 
 #[tokio::main]
@@ -75,6 +85,7 @@ async fn main() -> Result<()> {
         signer_key,
         dispute_game_factory,
         l2_output_oracle,
+        mode,
     } = Args::parse();
 
     // Initialize the tracing subscriber
@@ -102,6 +113,7 @@ async fn main() -> Result<()> {
         node_endpoint,
         dispute_game_factory,
         l2_output_oracle,
+        mode,
     ));
     tracing::info!(target: "op-challenger-cli", "Driver config created successfully.");
 

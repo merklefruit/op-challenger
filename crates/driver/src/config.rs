@@ -1,6 +1,6 @@
 //! The `config` module contains the [DriverConfig].
 
-use crate::SignerMiddlewareWS;
+use crate::{ChallengerMode, SignerMiddlewareWS};
 use ethers::{
     providers::{Http, Provider},
     types::{transaction::eip2718::TypedTransaction, Address},
@@ -25,6 +25,8 @@ pub struct DriverConfig {
     pub tx_sender: mpsc::Sender<TypedTransaction>,
     /// The receiving handle of the MPSC channel used to send transactions.
     pub tx_receiver: Mutex<mpsc::Receiver<TypedTransaction>>,
+    /// The mode of the challenger.
+    pub mode: ChallengerMode,
 }
 
 impl DriverConfig {
@@ -34,6 +36,7 @@ impl DriverConfig {
         node_provider: Arc<Provider<Http>>,
         dispute_game_factory: Address,
         l2_output_oracle: Address,
+        mode: ChallengerMode,
     ) -> Self {
         // Create a new MPSC channel for sending transactions from the drivers.
         let (tx_sender, tx_receiver) = mpsc::channel(128);
@@ -45,6 +48,7 @@ impl DriverConfig {
             l2_output_oracle,
             tx_sender,
             tx_receiver: Mutex::new(tx_receiver),
+            mode,
         }
     }
 }

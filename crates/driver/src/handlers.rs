@@ -1,6 +1,6 @@
 use crate::{
     bindings::{DisputeGame_Factory, DisputeGame_OutputAttestation},
-    utils, DriverConfig, GameType, SignerMiddlewareWS,
+    utils, ChallengerMode, DriverConfig, GameType, SignerMiddlewareWS,
 };
 use anyhow::Result;
 use ethers::{
@@ -72,22 +72,29 @@ pub async fn output_proposed(
                 if !is_pending_challenge {
                     tracing::info!(target: "output-attestation-driver", "No pending challenge found, submitting challenge to L1.");
 
-                    // Send a challenge creation transaction to the L1 dispute game factory.
-                    config
-                        .tx_sender
-                        .send(
-                            factory
-                                .create(
-                                    GameType::OutputAttestation as u8,
-                                    proposed_root.to_fixed_bytes(),
-                                    ethers::abi::encode(&[Token::Uint(U256::from(
-                                        *proposed_block,
-                                    ))])
-                                    .into(),
+                    match config.mode {
+                        ChallengerMode::ListenAndRespond => {
+                            // Send a challenge creation transaction to the L1 dispute game factory.
+                            config
+                                .tx_sender
+                                .send(
+                                    factory
+                                        .create(
+                                            GameType::OutputAttestation as u8,
+                                            proposed_root.to_fixed_bytes(),
+                                            ethers::abi::encode(&[Token::Uint(U256::from(
+                                                *proposed_block,
+                                            ))])
+                                            .into(),
+                                        )
+                                        .tx,
                                 )
-                                .tx,
-                        )
-                        .await?;
+                                .await?;
+                        }
+                        ChallengerMode::ListenOnly => {
+                            tracing::info!(target: "output-attestation-driver", "Not submitting challenge to L1, mode is set to `ListenOnly`.");
+                        }
+                    }
                 } else {
                     tracing::debug!(target: "output-attestation-driver", "Pending challenge found, waiting for the game to be created.")
                 }
@@ -146,20 +153,28 @@ pub async fn game_created_output_attestation(
                 root_claim,
                 l2_block_number
             );
-            config
-                .tx_sender
-                .send(
-                    game.challenge(
-                        ethers::abi::encode(&[
-                            Token::Uint(signed_root.r),
-                            Token::Uint(signed_root.s),
-                            Token::Uint(signed_root.v.into()),
-                        ])
-                        .into(),
-                    )
-                    .tx,
-                )
-                .await?;
+
+            match config.mode {
+                ChallengerMode::ListenAndRespond => {
+                    config
+                        .tx_sender
+                        .send(
+                            game.challenge(
+                                ethers::abi::encode(&[
+                                    Token::Uint(signed_root.r),
+                                    Token::Uint(signed_root.s),
+                                    Token::Uint(signed_root.v.into()),
+                                ])
+                                .into(),
+                            )
+                            .tx,
+                        )
+                        .await?;
+                }
+                ChallengerMode::ListenOnly => {
+                    tracing::info!(target: "dispute-factory-driver", "Not challenging in game {}, mode is set to `ListenOnly`.", game_addr);
+                }
+            }
         }
     }
 
