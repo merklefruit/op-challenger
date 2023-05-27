@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgAction, Parser};
 use ethers::{
     prelude::{Address, Provider, SignerMiddleware, Ws},
@@ -13,7 +13,6 @@ use op_challenger_driver::{
 };
 use std::sync::Arc;
 use tokio::task::JoinSet;
-use tracing::Level;
 
 /// Arguments for the `op-challenger` binary.
 #[derive(Parser, Debug)]

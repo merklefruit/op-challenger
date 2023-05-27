@@ -1,6 +1,6 @@
 [package]
 name = "op-challenger-telemetry"
-description = "The Prometheus metrics server for the OP Challenger"
+description = "The telemetry utilities for the OP Challenger"
 authors = ["clabby", "merklefruit"]
 version = "0.1.0"
 edition = "2021"
