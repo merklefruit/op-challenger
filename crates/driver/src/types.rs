@@ -45,7 +45,6 @@ pub enum ChallengerMode {
     /// The challenger will only listen for new games and report
     /// the disputes to the console without sending any transactions.
     ListenOnly,
-
     /// The challenger will listen for new disputes and respond to them
     /// by sending transactions.
     #[default]

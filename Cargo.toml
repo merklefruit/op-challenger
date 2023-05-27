@@ -2,5 +2,6 @@
 members = [
   "bin",
   "crates/driver",
+  "crates/telemetry",
   "crates/tui",
 ]

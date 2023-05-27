@@ -1,0 +1,13 @@
+[package]
+name = "op-challenger-telemetry"
+description = "The Prometheus metrics server for the OP Challenger"
+authors = ["clabby", "merklefruit"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.70"
+tracing = "0.1.37"
+tracing-subscriber = "0.3.16"
+prometheus_exporter = "0.8.5"
+lazy_static = "1.4.0"

@@ -89,7 +89,10 @@ async fn main() -> Result<()> {
     } = Args::parse();
 
     // Initialize the tracing subscriber
-    init_tracing_subscriber(v)?;
+    op_challenger_telemetry::init_tracing_subscriber(v)?;
+
+    // Initialize the prometheus exporter
+    op_challenger_telemetry::init_prometheus_exporter()?;
 
     // Connect to the websocket endpoint.
     tracing::debug!(target: "op-challenger-cli", "Connecting to websocket endpoint...");
@@ -143,24 +146,4 @@ async fn main() -> Result<()> {
     );
 
     Ok(())
-}
-
-/// Initializes the tracing subscriber
-///
-/// # Arguments
-/// * `verbosity_level` - The verbosity level (0-4)
-///
-/// # Returns
-/// * `Result<()>` - Ok if successful, Err otherwise.
-fn init_tracing_subscriber(verbosity_level: u8) -> Result<()> {
-    let subscriber = tracing_subscriber::fmt()
-        .with_max_level(match verbosity_level {
-            0 => Level::ERROR,
-            1 => Level::WARN,
-            2 => Level::INFO,
-            3 => Level::DEBUG,
-            _ => Level::TRACE,
-        })
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).map_err(|e| anyhow!(e))
 }
