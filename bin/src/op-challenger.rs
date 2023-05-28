@@ -109,6 +109,15 @@ async fn main() -> Result<()> {
     let node_endpoint = Arc::new(Provider::<Http>::try_from(&trusted_op_node_endpoint)?);
     tracing::info!(target: "op-challenger-cli", "Node connected successfully @ {}", &trusted_op_node_endpoint);
 
+    match mode {
+        ChallengerMode::ListenAndRespond => {
+            tracing::info!(target: "op-challenger-cli", "Running in listen-and-respond mode.");
+        }
+        ChallengerMode::ListenOnly => {
+            tracing::info!(target: "op-challenger-cli", "Running in listen-only mode.");
+        }
+    }
+
     // Create the driver config.
     let driver_config = Arc::new(DriverConfig::new(
         l1_endpoint,
