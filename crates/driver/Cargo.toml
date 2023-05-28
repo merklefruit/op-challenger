@@ -13,3 +13,6 @@ serde = "1.0.159"
 serde_json = "1.0.95"
 tokio = "1.27.0"
 tracing = "0.1.37"
+
+# Local
+op-challenger-telemetry = { path = "../telemetry" }

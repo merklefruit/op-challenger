@@ -46,6 +46,7 @@ pub async fn output_proposed(
                 tracing::debug!(target: "output-attestation-driver", "Output proposed on L1 for L2 block #{} matches output at block on trusted L2 RPC.", proposed_block);
             } else {
                 tracing::warn!(target: "output-attestation-driver", "Output proposed by L1 does not match output at block on trusted node. L1: {:?}, L2: {:?}", proposed_root, output_at_block.output_root);
+                op_challenger_telemetry::increment_root_mismatch_count();
 
                 // Check to see if someone has already challenged this output proposal.
                 tracing::debug!(target: "output-attestation-driver", "Checking to see if a challenge has already been submitted to L1 for the disagreed upon output...");
