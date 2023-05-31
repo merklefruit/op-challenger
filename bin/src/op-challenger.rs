@@ -6,6 +6,7 @@ use ethers::{
     prelude::{Address, Provider, SignerMiddleware, Ws},
     providers::Http,
     signers::LocalWallet,
+    types::H256,
 };
 use op_challenger_driver::{
     ChallengerMode, DisputeFactoryDriver, Driver, DriverConfig, OutputAttestationDriver,
@@ -46,7 +47,7 @@ struct Args {
         help = "The private key used for signing transactions.",
         env = "OP_CHALLENGER_KEY"
     )]
-    signer_key: String,
+    signer_key: Option<String>,
 
     /// The address of the dispute game factory contract.
     #[arg(
@@ -93,6 +94,18 @@ async fn main() -> Result<()> {
     // Initialize the prometheus exporter
     op_challenger_telemetry::init_prometheus_exporter()?;
 
+    // Validate the signer key depending on the mode.
+    let signer_key = match mode {
+        ChallengerMode::ListenAndRespond => {
+            tracing::info!(target: "op-challenger-cli", "Running in listen-and-respond mode.");
+            signer_key.ok_or(anyhow::anyhow!("Missing signer key."))?
+        }
+        ChallengerMode::ListenOnly => {
+            tracing::info!(target: "op-challenger-cli", "Running in listen-only mode.");
+            signer_key.unwrap_or(H256::zero().to_string())
+        }
+    };
+
     // Connect to the websocket endpoint.
     tracing::debug!(target: "op-challenger-cli", "Connecting to websocket endpoint...");
     let l1_endpoint = Arc::new(
@@ -108,15 +121,6 @@ async fn main() -> Result<()> {
     tracing::debug!(target: "op-challenger-cli", "Connecting to node endpoint...");
     let node_endpoint = Arc::new(Provider::<Http>::try_from(&trusted_op_node_endpoint)?);
     tracing::info!(target: "op-challenger-cli", "Node connected successfully @ {}", &trusted_op_node_endpoint);
-
-    match mode {
-        ChallengerMode::ListenAndRespond => {
-            tracing::info!(target: "op-challenger-cli", "Running in listen-and-respond mode.");
-        }
-        ChallengerMode::ListenOnly => {
-            tracing::info!(target: "op-challenger-cli", "Running in listen-only mode.");
-        }
-    }
 
     // Create the driver config.
     let driver_config = Arc::new(DriverConfig::new(
