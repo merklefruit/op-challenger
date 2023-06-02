@@ -1,18 +1,19 @@
 #![doc = include_str!("../README.md")]
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgAction, Parser};
 use ethers::{
     prelude::{Address, Provider, SignerMiddleware, Ws},
     providers::Http,
     signers::LocalWallet,
+    types::H256,
 };
 use op_challenger_driver::{
-    DisputeFactoryDriver, Driver, DriverConfig, OutputAttestationDriver, TxDispatchDriver,
+    ChallengerMode, DisputeFactoryDriver, Driver, DriverConfig, OutputAttestationDriver,
+    TxDispatchDriver,
 };
 use std::sync::Arc;
 use tokio::task::JoinSet;
-use tracing::Level;
 
 /// Arguments for the `op-challenger` binary.
 #[derive(Parser, Debug)]
@@ -46,7 +47,7 @@ struct Args {
         help = "The private key used for signing transactions.",
         env = "OP_CHALLENGER_KEY"
     )]
-    signer_key: String,
+    signer_key: Option<String>,
 
     /// The address of the dispute game factory contract.
     #[arg(
@@ -63,6 +64,15 @@ struct Args {
         env = "OP_CHALLENGER_L2OO"
     )]
     l2_output_oracle: Address,
+
+    /// The mode to run the challenger in.
+    #[arg(
+        long,
+        default_value = "listen-and-respond",
+        help = "The mode to run the challenger in.",
+        env = "OP_CHALLENGER_MODE"
+    )]
+    mode: ChallengerMode,
 }
 
 #[tokio::main]
@@ -75,10 +85,26 @@ async fn main() -> Result<()> {
         signer_key,
         dispute_game_factory,
         l2_output_oracle,
+        mode,
     } = Args::parse();
 
     // Initialize the tracing subscriber
-    init_tracing_subscriber(v)?;
+    op_challenger_telemetry::init_tracing_subscriber(v)?;
+
+    // Initialize the prometheus exporter
+    op_challenger_telemetry::init_prometheus_exporter()?;
+
+    // Validate the signer key depending on the mode.
+    let signer_key = match mode {
+        ChallengerMode::ListenAndRespond => {
+            tracing::info!(target: "op-challenger-cli", "Running in listen-and-respond mode.");
+            signer_key.ok_or(anyhow::anyhow!("Missing signer key."))?
+        }
+        ChallengerMode::ListenOnly => {
+            tracing::info!(target: "op-challenger-cli", "Running in listen-only mode.");
+            signer_key.unwrap_or(H256::zero().to_string())
+        }
+    };
 
     // Connect to the websocket endpoint.
     tracing::debug!(target: "op-challenger-cli", "Connecting to websocket endpoint...");
@@ -102,6 +128,7 @@ async fn main() -> Result<()> {
         node_endpoint,
         dispute_game_factory,
         l2_output_oracle,
+        mode,
     ));
     tracing::info!(target: "op-challenger-cli", "Driver config created successfully.");
 
@@ -131,24 +158,4 @@ async fn main() -> Result<()> {
     );
 
     Ok(())
-}
-
-/// Initializes the tracing subscriber
-///
-/// # Arguments
-/// * `verbosity_level` - The verbosity level (0-4)
-///
-/// # Returns
-/// * `Result<()>` - Ok if successful, Err otherwise.
-fn init_tracing_subscriber(verbosity_level: u8) -> Result<()> {
-    let subscriber = tracing_subscriber::fmt()
-        .with_max_level(match verbosity_level {
-            0 => Level::ERROR,
-            1 => Level::WARN,
-            2 => Level::INFO,
-            3 => Level::DEBUG,
-            _ => Level::TRACE,
-        })
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).map_err(|e| anyhow!(e))
 }

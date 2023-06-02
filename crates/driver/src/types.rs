@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use ethers::{
     prelude::SignerMiddleware,
     providers::{Provider, Ws},
@@ -35,4 +37,30 @@ pub(crate) type SignerMiddlewareWS = SignerMiddleware<Provider<Ws>, LocalWallet>
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OutputAtBlockResponse {
     pub output_root: H256,
+}
+
+/// The [ChallengerMode] enum defines the different modes of operation for the challenger.
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub enum ChallengerMode {
+    /// The challenger will only listen for new games and report
+    /// the disputes to the console without sending any transactions.
+    ListenOnly,
+    /// The challenger will listen for new disputes and respond to them
+    /// by sending transactions.
+    #[default]
+    ListenAndRespond,
+}
+
+impl FromStr for ChallengerMode {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "listen-only" => Ok(ChallengerMode::ListenOnly),
+            "listen-and-respond" => Ok(ChallengerMode::ListenAndRespond),
+            _ => Err(anyhow::anyhow!(
+                "Invalid challenger mode. Supported modes are: `listen-only` and `listen-and-respond`"
+            )),
+        }
+    }
 }

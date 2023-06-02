@@ -4,7 +4,7 @@ use crate::{
     bindings::{DisputeGame_Factory, L2OutputOracle},
     handlers,
     types::GameType,
-    Driver, DriverConfig,
+    ChallengerMode, Driver, DriverConfig,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -51,14 +51,23 @@ define_driver!(
             tracing::info!(target: "tx-dispatch-driver", "Locked receive channel mutex successfully. Beginning tx dispatch loop.");
 
             while let Some(tx) = locked_receive_ch.recv().await {
-                tracing::info!(target: "tx-dispatch-driver", "Signed transaction request received in dispatch driver. Sending transaction...");
-                match self.config.l1_provider.send_transaction(tx, None).await {
-                    Ok(res) => {
-                        tracing::info!(target: "tx-dispatch-driver", "Transaction sent successfully. Tx hash: {}", res.tx_hash());
+                match self.config.mode {
+                    ChallengerMode::ListenAndRespond => {
+                        tracing::info!(target: "tx-dispatch-driver", "Signed transaction request received in dispatch driver. Sending transaction...");
+                        match self.config.l1_provider.send_transaction(tx, None).await {
+                            Ok(res) => {
+                                tracing::info!(target: "tx-dispatch-driver", "Transaction sent successfully. Tx hash: {}", res.tx_hash());
+                            }
+                            Err(e) => {
+                                // Soft failure, log the error and continue.
+                                tracing::error!(target: "tx-dispatch-driver", "Error sending transaction: {}", e);
+                            }
+                        }
                     }
-                    Err(e) => {
-                        // Soft failure, log the error and continue.
-                        tracing::error!(target: "tx-dispatch-driver", "Error sending transaction: {}", e);
+                    ChallengerMode::ListenOnly => {
+                        tracing::info!(target: "tx-dispatch-driver", "Signed transaction request received in dispatch driver.");
+                        tracing::info!(target: "tx-dispatch-driver", "Not sending transaction, as the mode is set to `ListenOnly`.");
+                        continue;
                     }
                 }
             }
